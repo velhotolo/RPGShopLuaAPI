@@ -34,7 +34,7 @@ function M.get_by_id(id)
     local stmt = db:prepare("SELECT id, name, price, quantity FROM items WHERE id = ?")
 
     if not stmt then
-        return nil
+        return db:errmsg()
     end
 
     stmt:bind_values(id)
@@ -51,10 +51,10 @@ end
 function M.create(name, price, quantity)
     local stmt = db:prepare("INSERT INTO items (id, name, price, quantity) VALUES (?, ?, ?, ?)")
     if not stmt then
-        return nil
+        return db:errmsg()
     end
 
-    stmt:bind_values(name, price, quantity)
+    stmt:bind_values(id, name, price, quantity)
 
     local res = stmt:step()
     stmt:finalize()
@@ -65,16 +65,17 @@ function M.create(name, price, quantity)
     return nil
 end
 
-function M.update(id, name, price, quantity)
+function M.update(name, price, quantity, id)
     local stmt = db:prepare("UPDATE items SET name = ?, price = ?, quantity = ? WHERE id = ?")
 
     if not stmt then
-        return false
+        return db:errmsg()
     end
 
     stmt:bind_values(name, price, quantity, id)
 
     local res = stmt:step()
+
     stmt:finalize()
 
     return res == sqlite3.DONE and db:changes() > 0
@@ -84,7 +85,7 @@ function M.delete(id)
     local stmt = db:prepare("DELETE FROM items WHERE id = ?")
 
     if not stmt then
-        return false
+        return db:errmsg()
     end
 
     stmt:bind_values(id)
