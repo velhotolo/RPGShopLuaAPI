@@ -59,7 +59,7 @@ local function parse_item(req)
     local raw, body_err, body_status = get_raw_body(req)
 
     if not raw then
-        return nil, body_err, body_statys
+        return nil, body_err, body_status
     end
 
     local payload, _, err = json.decode(raw)
@@ -136,7 +136,7 @@ local function handle(req, rep)
         end
 
         if type(data.price) == "number" then
-        local new_id = db.create(data.name, data.price, data.quantity)
+            local new_id = db.create(data.name, data.price, data.quantity)
             if data.name and data.price and data.quantity then
                 send_json(rep, 201, db.get_by_id(new_id))
             else

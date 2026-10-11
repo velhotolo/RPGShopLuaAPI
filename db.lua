@@ -49,18 +49,18 @@ function M.get_by_id(id)
 end
 
 function M.create(name, price, quantity)
-    local stmt = db:prepare("INSERT INTO items (id, name, price, quantity) VALUES (?, ?, ?, ?)")
+    local stmt = db:prepare("INSERT INTO items (name, price, quantity) VALUES (?, ?, ?)")
     if not stmt then
         return db:errmsg()
     end
 
-    stmt:bind_values(id, name, price, quantity)
+    stmt:bind_values(name, price, quantity)
 
     local res = stmt:step()
     stmt:finalize()
 
     if res == sqlite3.DONE then
-        return new_id
+        return db:last_insert_rowid()
     end
     return nil
 end
