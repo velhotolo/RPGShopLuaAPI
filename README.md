@@ -4,9 +4,8 @@ A lightweight RESTful API and database built from scratch in Lua, simulating an 
 
 ## 📖 Overview
 
-This project was built as a hands-on exercise to deepen my understanding of databases, REST APIs, and backend architectures. While considering exploring other backend stacks, I decided to first solidify foundational concepts using **Java** and **Lua**.
-
-Building a modern web API in Lua presents unique challenges due to its minimalist standard library. To address this, I composed a lean stack using lightweight external modules to handle HTTP routing, JSON parsing, and relational persistence.
+30/10/26: This was my first API. In the end it went all wrong. I never used Java; there was no reason for this. That's how things are. I made 3 more APIS with different techs, where two of them revealed sensible information about my machine, lol. I created a 1:N API that looks decent and finally I guess I learned enough at least to detect what's wrong with my old code. So this API is fixed. Try it, and if something's broken, please let me know. RUFAT MAMADILI EZERGONAL!
+Ah. And I don't like CURL, but here we are. Enjoy.
 
 ---
 
