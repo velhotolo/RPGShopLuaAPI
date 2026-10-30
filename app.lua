@@ -1,7 +1,7 @@
 pcall(require, "luarocks.loader") -- calling everything
 local Pegasus = require("pegasus")
 local json = require("dkjson")
-local db = require("db")
+local M = require("db")
 
 local server = Pegasus:new({
     host = "127.0.0.1",
@@ -10,7 +10,7 @@ local server = Pegasus:new({
 
 local MAX_BODY_BYTES = 8 * 1024
 local MAX_NAME_LENGTH = 100
-local MAX_QUANTITY = 10000
+local MAX_QUANTITY = 1000000
 local API_TOKEN = os.getenv("SHOP_API_TOKEN")
 
 -- 1. Helper for sending JSON
@@ -49,7 +49,7 @@ local function get_raw_body(req)
     end
 
     if not ok or not data then
-        return "Request body empty or invalid.", 400
+        return nil, "Request body empty or invalid.", 400
     end
 end
 
@@ -73,7 +73,7 @@ local function parse_item(req)
 
     local name_length = #payload.name
     if not name_length or name_length > MAX_NAME_LENGTH then
-        return nil, "'name' must be valid text up to " .. MAX_NAME_LENGTH .. "characters.", 400
+        return nil, "'name' must be valid text up to " .. MAX_NAME_LENGTH .. " characters.", 400
     end
 
 
@@ -96,12 +96,16 @@ local function is_authorized(req)
     end
 
     local headers = req:headers() or {}
-    return headers["authorization"] == "Bearer" .. API__TOKEN
+    -- FIXED: Added the required space after "Bearer"
+    return headers["authorization"] == "Bearer " .. API_TOKEN
 end
 
 local function handle(req, rep)
     local path = req:path()
     local method = req:method()
+
+    -- FIXED: Added a matcher for the base /items route
+    local is_items_route = path:match("^/items/?$")
     local item_id = path:match("^/items/(%d+)$")
 
     if (method == "POST" or method == "PUT" or method == "DELETE") and not is_authorized(req) then
@@ -110,15 +114,34 @@ local function handle(req, rep)
     end
 
     -- GET show items
-    if path == "/items" and method == "GET" then
-        local items = db.get_all()
-        send_json(rep, 200, items)
+    if is_items_route and method == "GET" then
+        M.get_all()
+        send_json(rep, 200, M.items)
+        return
+    end
+
+    -- POST register items
+    if is_items_route and method == "POST" then
+        local data, err, status = parse_item(req)
+
+        if not data then
+            send_json(rep, status or 400, { error = err })
+            return -- FIXED: Added missing return to stop execution
+        end
+
+         local newId = M.create(data.name, data.price, data.quantity)
+
+        if newId then
+            send_json(rep, 201, M.get_by_id(newId))
+        else
+            send_json(rep, 500, { error = "Error registering in DataBase." })
+        end
         return
     end
 
     -- GET show item by ID
     if item_id and method == "GET" then
-        local item = db.get_by_id(tonumber(item_id))
+        local item = M.get_by_id(tonumber(item_id))
         if item then
             send_json(rep, 200, item)
         else
@@ -127,38 +150,21 @@ local function handle(req, rep)
         return
     end
 
-    -- POST register items (now validated by parse_item, same as PUT)
-    if path == "/items" and method == "POST" then
-        local data, err, status = parse_item(req)
-        if not data then
-            send_json(rep, status, { error = err })
-            return
-        end
-
-        if type(data.price) == "number" then
-            local new_id = db.create(data.name, data.price, data.quantity)
-            if data.name and data.price and data.quantity then
-                send_json(rep, 201, db.get_by_id(new_id))
-            else
-                send_json(rep, 500, { error = "Error registering in DataBase." })
-            end
-        end
-        return
-    end
-
     -- PUT update items by ID
     if item_id and method == "PUT" then
         local data, err, status = parse_item(req)
         if not data then
-            send_json(rep, status, { error = err })
+            send_json(rep, status or 400, { error = err })
             return
         end
 
         local id_num = tonumber(item_id)
-        local putter = db.update(data.name, data.price, data.quantity, id_num)
-        -- id comes first, matching db.update(id, name, price, quantity)
-        if data.name and data.price and data.quantity and id_num then
-            send_json(rep, 200, db.get_by_id(id_num))
+
+       -- UPDATE
+        local putter = M.update(data.name, data.price, data.quantity, id_num)
+
+        if putter then
+            send_json(rep, 200, M.get_by_id(id_num))
         else
             send_json(rep, 404, { error = "Couldn't find item for update." })
         end
@@ -167,7 +173,7 @@ local function handle(req, rep)
 
     -- DELETE by ID
     if item_id and method == "DELETE" then
-        local deleted = db.delete(tonumber(item_id))
+        local deleted = M.delete(tonumber(item_id))
         if deleted then
             send_json(rep, 200, { message = "Item successfully removed." })
         else
@@ -176,7 +182,8 @@ local function handle(req, rep)
         return
     end
 
-    send_json(rep, 405, { error = "Method not allowed." })
+    -- If no route matched at all
+    send_json(rep, 404, { error = "Endpoint not found or Method not allowed." })
 end
 
 server:start(function(req, rep)
@@ -186,3 +193,4 @@ server:start(function(req, rep)
         pcall(send_json, rep, 500, { error = "Internal server error. " })
     end
 end)
+

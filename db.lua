@@ -1,5 +1,4 @@
 local sqlite3 = require("lsqlite3")
-
 local db = sqlite3.open("shop.db")
 
 db:exec([[
@@ -34,8 +33,9 @@ function M.get_by_id(id)
     local stmt = db:prepare("SELECT id, name, price, quantity FROM items WHERE id = ?")
 
     if not stmt then
-        return db:errmsg()
+        return nil, db:errmsg()
     end
+
 
     stmt:bind_values(id)
 
@@ -51,7 +51,7 @@ end
 function M.create(name, price, quantity)
     local stmt = db:prepare("INSERT INTO items (name, price, quantity) VALUES (?, ?, ?)")
     if not stmt then
-        return db:errmsg()
+        return nil, db:errmsg()
     end
 
     stmt:bind_values(name, price, quantity)
@@ -69,7 +69,7 @@ function M.update(name, price, quantity, id)
     local stmt = db:prepare("UPDATE items SET name = ?, price = ?, quantity = ? WHERE id = ?")
 
     if not stmt then
-        return db:errmsg()
+        return nil, db:errmsg()
     end
 
     stmt:bind_values(name, price, quantity, id)
@@ -85,7 +85,7 @@ function M.delete(id)
     local stmt = db:prepare("DELETE FROM items WHERE id = ?")
 
     if not stmt then
-        return db:errmsg()
+        return nil, db:errmsg()
     end
 
     stmt:bind_values(id)
